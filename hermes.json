@@ -1,0 +1,15 @@
+{
+  "agent": {
+    "name": "Hermes-Orchestrator",
+    "provider": "hermes",
+    "apiBase": "http://localhost:11434/v1",
+    "model": "qwen2.5-coder:latest",
+    "apiKey": "sk-none"
+  },
+  "memory": {
+    "enabled": true,
+    "storage": "sqlite",
+    "path": "./storage/hermes_memory.sqlite"
+  },
+  "skillsPath": "./skills"
+}
