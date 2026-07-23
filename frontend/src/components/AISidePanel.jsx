@@ -73,13 +73,17 @@ export default function AISidePanel() {
       }
     } catch (err) {
       console.error("AI chat error:", err);
-      const errMsg = err.response?.data?.message || err.message || "Connection failed";
+      const backendReply = err.response?.data?.reply || err.response?.data?.message;
+      const errMsg = backendReply || err.message || "Connection failed";
+      const isNetworkError = !err.response && (err.code === "ERR_NETWORK" || err.message === "Network Error");
       setMessages((prev) => [
         ...prev,
         {
           id: Date.now() + 1,
           sender: "ai",
-          text: `⚠️ **Connection Error:** Unable to reach local Hermes API at \`http://localhost:11434/v1\`.\n\nPlease verify that Ollama/Hermes is active locally: \`ollama run qwen2.5-coder:latest\`.\n\n*Error details: ${errMsg}*`,
+          text: isNetworkError
+            ? `⚠️ **Connection Error:** Could not reach the Laravel API at \`${import.meta.env.VITE_API_URL || "http://127.0.0.1:8000/api"}\`.\n\nStart the backend with:\n\`\`\`\ncd backend && php artisan serve\n\`\`\`\n\nIf the backend is running, add a free \`GROQ_API_KEY\` or \`GEMINI_API_KEY\` to \`backend/.env\` for faster AI responses.\n\n*Error details: ${errMsg}*`
+            : `⚠️ **AI Error:** ${errMsg}`,
           isError: true,
         },
       ]);

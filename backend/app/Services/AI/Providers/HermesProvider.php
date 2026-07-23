@@ -19,17 +19,26 @@ class HermesProvider implements AIProviderInterface
         Log::info("Dispatching chat request to Hermes API: {$apiBase}/chat/completions [Model: {$model}]");
 
         try {
-            $response = Http::withHeaders([
-                'Authorization' => 'Bearer ' . $apiKey,
-                'Content-Type' => 'application/json',
-                'Accept' => 'application/json',
+            Log::info('===== OLLAMA PAYLOAD =====');
+            Log::info(json_encode([
+                'model' => $model,
+                'messages' => $messages,
+            ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+
+           $response = Http::withOptions([
+                'verify' => false,
+                'version' => 1.1,
+                'expect' => false,
             ])
-            ->connectTimeout(15)
-            ->timeout(300)
+            ->acceptJson()
+            ->contentType('application/json')
+            ->connectTimeout(10)
+            ->timeout((int) env('HERMES_TIMEOUT_SECONDS', 120))
             ->post($apiBase . '/chat/completions', [
                 'model' => $model,
                 'messages' => $messages,
                 'temperature' => 0.7,
+                'stream' => false,
             ]);
 
             if ($response->successful()) {

@@ -22,6 +22,9 @@ class AIController extends Controller
      */
     public function chat(AIChatRequest $request): JsonResponse
     {
+        // LLM inference can exceed PHP's default 30s limit (especially local Ollama on CPU).
+        set_time_limit((int) env('AI_MAX_EXECUTION_SECONDS', 180));
+
         try {
             $validated = $request->validated();
             
@@ -38,7 +41,10 @@ class AIController extends Controller
             if (empty($context) && isset($validated['board_id'])) {
                 $context = ['board_id' => $validated['board_id']];
             }
-
+            Log::info('Incoming AI request', [
+                'messages' => $messages,
+                'context' => $context,
+            ]);
             $reply = $this->aiService->chat($messages, $context);
 
             return response()->json([
