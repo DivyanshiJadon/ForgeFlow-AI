@@ -23,16 +23,16 @@ class AIController extends Controller
     public function chat(AIChatRequest $request): JsonResponse
     {
         // LLM inference can exceed PHP's default 30s limit (especially local Ollama on CPU).
-        set_time_limit((int) env('AI_MAX_EXECUTION_SECONDS', 180));
+        set_time_limit((int) config('ai.max_execution_seconds', 180));
 
         try {
             $validated = $request->validated();
-            
+
             // Format messages array
             $messages = $validated['messages'] ?? [];
-            if (empty($messages) && !empty($validated['message'])) {
+            if (empty($messages) && ! empty($validated['message'])) {
                 $messages = [
-                    ['role' => 'user', 'content' => $validated['message']]
+                    ['role' => 'user', 'content' => $validated['message']],
                 ];
             }
 
@@ -49,14 +49,20 @@ class AIController extends Controller
 
             return response()->json([
                 'reply' => $reply,
-                'message' => $reply
+                'message' => $reply,
             ]);
 
-        } catch (\Exception $e) {
-            Log::error('AI chat endpoint failure: ' . $e->getMessage());
+        } catch (\Throwable $e) {
+            // Log the real error server-side, but never leak stack traces or
+            // technical detail to the client.
+            Log::error('[AI] Chat endpoint failure', [
+                'message' => $e->getMessage(),
+            ]);
+
             return response()->json([
-                'reply' => "⚠️ **AI Engine Error:** " . $e->getMessage()
-            ], 500);
+                'reply' => "I'm having trouble contacting the AI provider right now. Please try again in a few seconds.",
+                'message' => "I'm having trouble contacting the AI provider right now. Please try again in a few seconds.",
+            ], 200);
         }
     }
 }

@@ -8,7 +8,6 @@ import {
   Zap,
   Lightbulb,
   CheckCircle2,
-  RefreshCw,
   Code2,
   ListTodo,
   Copy,
@@ -47,6 +46,23 @@ export default function AISidePanel() {
     scrollToBottom();
   }, [messages, isLoading]);
 
+  // Translate any transport-level failure into a calm, human message.
+  // The backend already returns clean assistant text (HTTP 200) for provider
+  // problems, so this only covers the cases where the request never completed.
+  const friendlyErrorText = (err) => {
+    const noResponse = !err.response;
+    const timedOut =
+      err.code === "ECONNABORTED" || /timeout/i.test(err.message || "");
+
+    if (timedOut) {
+      return "The AI is taking longer than usual to respond. Please try again in a few seconds.";
+    }
+    if (noResponse) {
+      return "I couldn't reach the AI service right now. Please try again in a moment.";
+    }
+    return "The AI provider is temporarily unavailable. Please try again shortly.";
+  };
+
   if (!isAISidebarOpen) return null;
 
   const handleSendMessage = async (customPrompt) => {
@@ -73,17 +89,15 @@ export default function AISidePanel() {
       }
     } catch (err) {
       console.error("AI chat error:", err);
+      // Prefer any clean assistant text the backend returned; otherwise fall
+      // back to a friendly, non-technical message (no raw timeout / curl / stack).
       const backendReply = err.response?.data?.reply || err.response?.data?.message;
-      const errMsg = backendReply || err.message || "Connection failed";
-      const isNetworkError = !err.response && (err.code === "ERR_NETWORK" || err.message === "Network Error");
       setMessages((prev) => [
         ...prev,
         {
           id: Date.now() + 1,
           sender: "ai",
-          text: isNetworkError
-            ? `⚠️ **Connection Error:** Could not reach the Laravel API at \`${import.meta.env.VITE_API_URL || "http://127.0.0.1:8000/api"}\`.\n\nStart the backend with:\n\`\`\`\ncd backend && php artisan serve\n\`\`\`\n\nIf the backend is running, add a free \`GROQ_API_KEY\` or \`GEMINI_API_KEY\` to \`backend/.env\` for faster AI responses.\n\n*Error details: ${errMsg}*`
-            : `⚠️ **AI Error:** ${errMsg}`,
+          text: backendReply || friendlyErrorText(err),
           isError: true,
         },
       ]);
@@ -281,12 +295,17 @@ export default function AISidePanel() {
         )}
 
         {isLoading && (
-          <div className="flex items-center gap-3 text-xs text-slate-500">
-            <div className="h-7 w-7 rounded-lg bg-purple-600 flex items-center justify-center text-white flex-shrink-0">
-              <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+          <div className="flex items-center gap-2.5 text-xs text-slate-500">
+            <div className="h-7 w-7 rounded-lg bg-purple-600 flex items-center justify-center text-white flex-shrink-0 shadow-xs">
+              <Bot className="h-4 w-4" />
             </div>
-            <div className="p-3 rounded-2xl bg-slate-100 dark:bg-slate-800 rounded-bl-none text-slate-400 italic flex items-center gap-2">
-              <span className="animate-pulse">Hermes is reasoning...</span>
+            <div className="p-3 rounded-2xl bg-slate-100 dark:bg-slate-800 rounded-bl-none flex items-center gap-2.5">
+              <span className="flex items-center gap-1" aria-label="Copilot is typing">
+                <span className="h-1.5 w-1.5 rounded-full bg-purple-400 animate-bounce [animation-delay:-0.3s]" />
+                <span className="h-1.5 w-1.5 rounded-full bg-purple-400 animate-bounce [animation-delay:-0.15s]" />
+                <span className="h-1.5 w-1.5 rounded-full bg-purple-400 animate-bounce" />
+              </span>
+              <span className="text-slate-400 italic">Copilot is thinking…</span>
             </div>
           </div>
         )}

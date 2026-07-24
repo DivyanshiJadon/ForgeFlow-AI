@@ -54,18 +54,26 @@ export const BoardProvider = ({ children }) => {
     setIsOnboardingOpen(false);
   };
 
-  // Fetch all boards
+  // Return to the Home / dashboard view without touching persisted data.
+  // Only the active workspace selection is reset — boards, lists and cards
+  // all remain in the database and in the sidebar.
+  const goHome = () => {
+    setActiveBoardId(null);
+    setActiveBoard(null);
+    setIsOnboardingOpen(false);
+  };
+
+  // Fetch all boards. The app intentionally does NOT auto-open a workspace on
+  // load — it always lands on Home. Existing workspaces stay available in the
+  // sidebar; the user picks one explicitly.
   const fetchBoards = useCallback(async () => {
     setLoading(true);
     try {
       const res = await API.get("/boards");
       const data = res.data;
       setBoards(data);
-      
-      // Auto-select first board if none active and boards exist
-      if (data.length > 0 && !activeBoardId) {
-        setActiveBoardId(data[0].id);
-      } else if (data.length === 0) {
+
+      if (data.length === 0) {
         setActiveBoardId(null);
         setActiveBoard(null);
       }
@@ -75,7 +83,7 @@ export const BoardProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  }, [activeBoardId]);
+  }, []);
 
   // Fetch active board details (including lists & cards)
   const fetchActiveBoardDetails = useCallback(async (boardId) => {
@@ -296,6 +304,7 @@ export const BoardProvider = ({ children }) => {
         activeBoardId,
         setActiveBoardId,
         selectBoard,
+        goHome,
         activeBoard,
         loading,
         boardLoading,

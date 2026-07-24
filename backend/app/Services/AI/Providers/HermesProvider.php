@@ -5,57 +5,85 @@ namespace App\Services\AI\Providers;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
-class HermesProvider implements AIProviderInterface
+/**
+ * Local Hermes / OpenClaw / Ollama provider (OpenAI-compatible endpoint).
+ *
+ * Unlike the cloud providers, this is only attempted when the Ollama server is
+ * actually running AND the configured model is installed — probed via a fast
+ * `/v1/models` call. This prevents the copilot from ever hanging on (or falling
+ * back through) a local server that is offline.
+ */
+class HermesProvider extends OpenAICompatibleProvider
 {
-    /**
-     * Generate response via local Hermes / OpenClaw / Ollama server.
-     */
-    public function generateResponse(array $messages, array $context): string
+    public function name(): string
     {
-        $apiBase = rtrim(env('HERMES_API_BASE', 'http://127.0.0.1:11434/v1'), '/');
-        $model = env('HERMES_MODEL', 'qwen2.5-coder:latest');
-        $apiKey = env('HERMES_API_KEY', 'sk-none');
+        return 'hermes';
+    }
 
-        Log::info("Dispatching chat request to Hermes API: {$apiBase}/chat/completions [Model: {$model}]");
-
+    public function isAvailable(): bool
+    {
         try {
-            Log::info('===== OLLAMA PAYLOAD =====');
-            Log::info(json_encode([
-                'model' => $model,
-                'messages' => $messages,
-            ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+            $response = Http::withOptions($this->httpOptions())
+                ->connectTimeout((int) ($this->config['health_connect_timeout'] ?? 2))
+                ->timeout((int) ($this->config['health_timeout'] ?? 3))
+                ->get($this->apiBase().'/models');
 
-           $response = Http::withOptions([
-                'verify' => false,
-                'version' => 1.1,
-                'expect' => false,
-            ])
-            ->acceptJson()
-            ->contentType('application/json')
-            ->connectTimeout(10)
-            ->timeout((int) env('HERMES_TIMEOUT_SECONDS', 120))
-            ->post($apiBase . '/chat/completions', [
-                'model' => $model,
-                'messages' => $messages,
-                'temperature' => 0.7,
-                'stream' => false,
-            ]);
+            if (! $response->successful()) {
+                Log::info('[AI] Hermes skipped: /v1/models returned HTTP '.$response->status());
 
-            if ($response->successful()) {
-                $json = $response->json();
-                return $json['choices'][0]['message']['content'] ?? 'No message content returned from Hermes API.';
+                return false;
             }
 
-            Log::error("Hermes API returned non-200 status code {$response->status()}: " . $response->body());
-            return "⚠️ **Hermes API Error ({$response->status()}):** " . ($response->json()['error']['message'] ?? $response->body());
+            $models = collect(data_get($response->json(), 'data', []))
+                ->pluck('id')
+                ->filter()
+                ->all();
 
-        } catch (\Exception $e) {
-            Log::error('Hermes API connection exception: ' . $e->getMessage());
-            return "⚠️ **Unable to reach local Hermes API at `{$apiBase}`.**\n\n" .
-                   "**Troubleshooting Checklist:**\n" .
-                   "1. Ensure Ollama server is running in the background. In a terminal, run: `ollama run qwen2.5-coder:latest`.\n" .
-                   "2. Ensure port `11434` is listening.\n\n" .
-                   "*Error details: " . $e->getMessage() . "*";
+            if (! $this->modelInstalled($models)) {
+                Log::info('[AI] Hermes skipped: model not installed', [
+                    'model' => $this->model(),
+                    'available' => $models,
+                ]);
+
+                return false;
+            }
+
+            return true;
+        } catch (\Throwable $e) {
+            Log::info('[AI] Hermes skipped: Ollama offline ('.$e->getMessage().')');
+
+            return false;
         }
+    }
+
+    /**
+     * Accept an exact match or a tag-insensitive match (e.g. config wants
+     * "qwen2.5-coder:latest" and the server reports "qwen2.5-coder").
+     *
+     * @param  array<int, string>  $models
+     */
+    protected function modelInstalled(array $models): bool
+    {
+        $wanted = $this->model();
+        $wantedBase = explode(':', $wanted)[0];
+
+        foreach ($models as $model) {
+            if ($model === $wanted) {
+                return true;
+            }
+            if (explode(':', $model)[0] === $wantedBase) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    protected function httpOptions(): array
+    {
+        return [
+            'verify' => false,
+            'version' => 1.1,
+        ];
     }
 }

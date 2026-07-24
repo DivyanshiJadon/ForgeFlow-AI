@@ -7,7 +7,7 @@ use App\Services\AI\Providers\GeminiProvider;
 use App\Services\AI\Providers\GroqProvider;
 use App\Services\AI\Providers\HermesProvider;
 use App\Services\AI\Providers\MockAIProvider;
-use Illuminate\Support\Facades\Http;
+use App\Services\AI\Providers\ProviderException;
 use Illuminate\Support\Facades\Log;
 
 class AIService
@@ -29,6 +29,7 @@ class AIService
             'groq' => $groqProvider,
             'gemini' => $geminiProvider,
             'hermes' => $hermesProvider,
+            // Alias so AI_PROVIDER=ollama resolves to the local server too.
             'ollama' => $hermesProvider,
             'mock' => $mockAIProvider,
         ];
@@ -37,8 +38,12 @@ class AIService
     /**
      * Coordinate chat message generation with automatic provider fallback.
      *
-     * @param array $messages History list of the conversation.
-     * @param array $context Active board meta details.
+     * Each provider is checked for availability (fast, no inference) before it
+     * is attempted, so an offline local server or a provider missing its key is
+     * skipped instantly rather than causing a hang or a wasted request.
+     *
+     * @param  array  $messages  History list of the conversation.
+     * @param  array  $context  Active board meta details.
      * @return string Reply markdown content.
      */
     public function chat(array $messages, array $context): string
@@ -55,27 +60,43 @@ class AIService
                 continue;
             }
 
-            Log::info("Processing AI chat via provider: {$providerName}");
-            $reply = $provider->generateResponse($fullMessages, $context);
+            if (! $provider->isAvailable()) {
+                Log::info("[AI] Skipping provider '{$providerName}': not available.");
 
-            if (!$this->isProviderFailureReply($reply)) {
-                return $reply;
+                continue;
             }
 
-            Log::warning("Provider {$providerName} failed, trying next fallback.");
+            Log::info("[AI] Attempting provider '{$providerName}'.");
+
+            try {
+                return $provider->generateResponse($fullMessages, $context);
+            } catch (ProviderException $e) {
+                Log::warning("[AI] Provider '{$providerName}' failed, falling back.", [
+                    'reason' => $e->getMessage(),
+                    'status' => $e->status,
+                ]);
+
+                continue;
+            }
         }
 
-        return '⚠️ **All AI providers failed.** Add `GROQ_API_KEY` or `GEMINI_API_KEY` to backend `.env`, or start Ollama with `ollama run qwen2.5-coder:latest`.';
+        // Reached only if even the always-on mock provider was excluded.
+        Log::error('[AI] No provider could handle the request.');
+
+        return $this->friendlyUnavailableMessage();
     }
 
     /**
-     * Build ordered provider chain from env config + available credentials.
+     * Build the ordered provider chain from config: the preferred provider
+     * first, then the remaining live providers by priority, and finally the
+     * offline mock as a guaranteed responder.
      *
      * @return list<string>
      */
     protected function resolveProviderChain(): array
     {
-        $preferred = strtolower((string) env('AI_PROVIDER', 'groq'));
+        $preferred = strtolower((string) config('ai.provider', 'groq'));
+
         $chain = array_values(array_unique(array_filter([
             $preferred,
             'groq',
@@ -84,42 +105,18 @@ class AIService
             'mock',
         ])));
 
-        return array_values(array_filter($chain, function (string $name): bool {
-            if ($name === 'groq') {
-                return !empty(env('GROQ_API_KEY'));
-            }
-            if ($name === 'gemini') {
-                return !empty(env('GEMINI_API_KEY'));
-            }
-            if (in_array($name, ['hermes', 'ollama'], true)) {
-                return $this->isOllamaReachable();
-            }
-            if ($name === 'mock') {
-                return true;
-            }
-
-            return isset($this->providers[$name]);
-        }));
+        return array_values(array_filter(
+            $chain,
+            fn (string $name): bool => isset($this->providers[$name])
+        ));
     }
 
-    protected function isOllamaReachable(): bool
+    /**
+     * User-facing message used only when nothing at all could respond. Kept
+     * clean and free of stack traces / technical error detail.
+     */
+    protected function friendlyUnavailableMessage(): string
     {
-        $apiBase = rtrim(env('HERMES_API_BASE', 'http://127.0.0.1:11434/v1'), '/');
-        $healthUrl = preg_replace('#/v1$#', '', $apiBase) . '/v1/models';
-
-        try {
-            $response = Http::connectTimeout(3)->timeout(5)->get($healthUrl);
-
-            return $response->successful();
-        } catch (\Throwable $e) {
-            Log::warning('Ollama health check failed: ' . $e->getMessage());
-
-            return false;
-        }
-    }
-
-    protected function isProviderFailureReply(string $reply): bool
-    {
-        return str_starts_with($reply, '⚠️');
+        return "I'm having trouble contacting the AI provider right now. Please try again in a few seconds.";
     }
 }

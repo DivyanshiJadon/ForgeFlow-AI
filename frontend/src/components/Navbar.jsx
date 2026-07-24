@@ -18,6 +18,7 @@ export default function Navbar() {
     boards,
     activeBoardId,
     selectBoard,
+    goHome,
     searchQuery,
     setSearchQuery,
     priorityFilter,
@@ -36,14 +37,9 @@ export default function Navbar() {
         {/* Left Branding */}
         <div className="flex items-center gap-4">
           <div
-            onClick={() => {
-              if (boards.length > 0) {
-                selectBoard(boards[0].id);
-              } else {
-                setIsOnboardingOpen(true);
-              }
-            }}
+            onClick={goHome}
             className="flex items-center gap-3 cursor-pointer group"
+            title="Go to Home"
           >
             {/* Custom Vector FF Logo */}
             <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 shadow-md shadow-indigo-500/20 ring-1 ring-white/20 group-hover:scale-105 transition-transform">

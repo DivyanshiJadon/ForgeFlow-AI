@@ -8,6 +8,21 @@ use App\Models\Card;
 
 class MockAIProvider implements AIProviderInterface
 {
+    public function name(): string
+    {
+        return 'mock';
+    }
+
+    /**
+     * The offline safety net is always available and never throws — it grounds
+     * its answers in live board data so the copilot can still respond usefully
+     * when no live LLM can be reached.
+     */
+    public function isAvailable(): bool
+    {
+        return true;
+    }
+
     public function generateResponse(array $messages, array $context): string
     {
         $boardId = $context['board_id'] ?? null;
