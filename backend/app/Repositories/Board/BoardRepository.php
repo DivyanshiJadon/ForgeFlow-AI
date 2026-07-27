@@ -3,6 +3,7 @@
 namespace App\Repositories\Board;
 
 use App\Models\Board;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
 
 class BoardRepository implements BoardRepositoryInterface
@@ -10,6 +11,11 @@ class BoardRepository implements BoardRepositoryInterface
     public function all(): Collection
     {
         return Board::all();
+    }
+
+    public function forUser(User $user): Collection
+    {
+        return Board::where('user_id', $user->id)->orderBy('updated_at', 'desc')->get();
     }
 
     public function find(int $id): ?Board
@@ -22,7 +28,9 @@ class BoardRepository implements BoardRepositoryInterface
         return Board::with([
             'lists.cards.member',
             'lists.cards.tags',
-            'lists.cards.comments'
+            'lists.cards.comments',
+            'activityLogs',
+            'members'
         ])->find($id);
     }
 

@@ -8,7 +8,26 @@ const API = axios.create({
     "Content-Type": "application/json",
     Accept: "application/json",
   },
-  timeout: 120000, // 120s timeout for LLM inference calls
+  timeout: 60000,
 });
+
+const savedToken = localStorage.getItem("forge_token");
+if (savedToken) {
+  API.defaults.headers.common["Authorization"] = `Bearer ${savedToken}`;
+}
+
+API.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem("forge_token");
+      delete API.defaults.headers.common["Authorization"];
+      if (window.location.pathname !== "/login") {
+        window.location.href = "/login";
+      }
+    }
+    return Promise.reject(error);
+  }
+);
 
 export default API;

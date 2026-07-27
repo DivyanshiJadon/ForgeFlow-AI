@@ -6,7 +6,7 @@ use App\Services\AI\Providers\AIProviderInterface;
 use App\Services\AI\Providers\GeminiProvider;
 use App\Services\AI\Providers\GroqProvider;
 use App\Services\AI\Providers\HermesProvider;
-use App\Services\AI\Providers\MockAIProvider;
+use App\Services\AI\Providers\OpenAIProvider;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -22,15 +22,14 @@ class AIService
         GroqProvider $groqProvider,
         GeminiProvider $geminiProvider,
         HermesProvider $hermesProvider,
-        MockAIProvider $mockAIProvider,
+        OpenAIProvider $openAIProvider,
     ) {
         $this->promptBuilder = $promptBuilder;
         $this->providers = [
             'groq' => $groqProvider,
             'gemini' => $geminiProvider,
             'hermes' => $hermesProvider,
-            'ollama' => $hermesProvider,
-            'mock' => $mockAIProvider,
+            'openai' => $openAIProvider,
         ];
     }
 
@@ -57,15 +56,26 @@ class AIService
 
             Log::info("Processing AI chat via provider: {$providerName}");
             $reply = $provider->generateResponse($fullMessages, $context);
+            Log::info("Provider {$providerName} response:");
 
             if (!$this->isProviderFailureReply($reply)) {
+                Log::info("Provider {$providerName} succeeded.");
                 return $reply;
             }
 
             Log::warning("Provider {$providerName} failed, trying next fallback.");
         }
 
-        return '⚠️ **All AI providers failed.** Add `GROQ_API_KEY` or `GEMINI_API_KEY` to backend `.env`, or start Ollama with `ollama run qwen2.5-coder:latest`.';
+        // Last resort: try Hermes/Ollama even if not in the resolved chain (could be transient)
+        if (!in_array('hermes', $this->resolveProviderChain(), true)) {
+            Log::info('Attempting Hermes/Ollama as last-resort fallback...');
+            $hermesReply = $this->providers['hermes']->generateResponse($fullMessages, $context);
+            if (!$this->isProviderFailureReply($hermesReply)) {
+                return $hermesReply;
+            }
+        }
+
+        return '⚠️ All AI providers failed. Check your API keys and network connectivity. Ensure your `GROQ_API_KEY` and `GEMINI_API_KEY` in `.env` are valid, or start Ollama locally with `ollama run qwen2.5-coder:latest`.';
     }
 
     /**
@@ -81,25 +91,35 @@ class AIService
             'groq',
             'gemini',
             'hermes',
-            'mock',
         ])));
 
-        return array_values(array_filter($chain, function (string $name): bool {
+        $resolved = array_values(array_filter($chain, function (string $name): bool {
             if ($name === 'groq') {
                 return !empty(env('GROQ_API_KEY'));
             }
+
             if ($name === 'gemini') {
                 return !empty(env('GEMINI_API_KEY'));
             }
-            if (in_array($name, ['hermes', 'ollama'], true)) {
+
+            if ($name === 'hermes') {
                 return $this->isOllamaReachable();
             }
-            if ($name === 'mock') {
-                return true;
-            }
 
-            return isset($this->providers[$name]);
+            return false;
         }));
+
+        // Always try at least one cloud provider if keys exist
+        if (empty($resolved)) {
+            if (!empty(env('GROQ_API_KEY'))) {
+                return ['groq'];
+            }
+            if (!empty(env('GEMINI_API_KEY'))) {
+                return ['gemini'];
+            }
+        }
+
+        return $resolved;
     }
 
     protected function isOllamaReachable(): bool
@@ -108,9 +128,17 @@ class AIService
         $healthUrl = preg_replace('#/v1$#', '', $apiBase) . '/v1/models';
 
         try {
-            $response = Http::connectTimeout(3)->timeout(5)->get($healthUrl);
+            Log::info('Checking Ollama...');
+            Log::info('Health URL: ' . $healthUrl);
+
+            $response = Http::connectTimeout(3)
+                ->timeout(5)
+                ->get($healthUrl);
+
+            Log::info('Health Status: ' . $response->status());
 
             return $response->successful();
+
         } catch (\Throwable $e) {
             Log::warning('Ollama health check failed: ' . $e->getMessage());
 
@@ -123,3 +151,4 @@ class AIService
         return str_starts_with($reply, '⚠️');
     }
 }
+

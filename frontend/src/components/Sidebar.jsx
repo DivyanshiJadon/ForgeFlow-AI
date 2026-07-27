@@ -1,4 +1,5 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Layout,
   Plus,
@@ -13,17 +14,53 @@ import {
   FolderKanban,
 } from "lucide-react";
 import { useBoard } from "../context/BoardContext";
+import API from "../services/api";
+
+function timeAgo(dateString) {
+  if (!dateString) return "";
+  const now = new Date();
+  const date = new Date(dateString);
+  const seconds = Math.floor((now - date) / 1000);
+
+  if (seconds < 60) return "just now";
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d ago`;
+  return `${Math.floor(days / 7)}w ago`;
+}
+
+function formatAction(action) {
+  return action
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (l) => l.toUpperCase());
+}
 
 export default function Sidebar() {
   const {
     boards,
     activeBoardId,
-    selectBoard,
     activeBoard,
     deleteBoard,
-    setIsOnboardingOpen,
     toggleAISidebar,
   } = useBoard();
+  const navigate = useNavigate();
+  const [activities, setActivities] = React.useState([]);
+  const [loadingActivities, setLoadingActivities] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!activeBoardId) {
+      setActivities([]);
+      return;
+    }
+    setLoadingActivities(true);
+    API.get(`/boards/${activeBoardId}/activities`)
+      .then((res) => setActivities(res.data))
+      .catch(() => setActivities([]))
+      .finally(() => setLoadingActivities(false));
+  }, [activeBoardId]);
 
   return (
     <aside className="w-64 flex-shrink-0 hidden md:flex flex-col border-r border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 backdrop-blur-md h-[calc(100vh-4rem)] sticky top-16 select-none">
@@ -37,7 +74,7 @@ export default function Sidebar() {
             </h2>
           </div>
           <button
-            onClick={() => setIsOnboardingOpen(true)}
+            onClick={() => navigate("/dashboard")}
             className="p-1 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/60 rounded-md transition-colors cursor-pointer"
             title="Create Workspace"
           >
@@ -45,7 +82,6 @@ export default function Sidebar() {
           </button>
         </div>
 
-        {/* Board Item List */}
         <div className="space-y-1 max-h-56 overflow-y-auto pr-1">
           {boards.length === 0 ? (
             <div className="text-center py-6 px-2 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-dashed border-slate-200 dark:border-slate-800">
@@ -53,7 +89,7 @@ export default function Sidebar() {
                 No active workspaces
               </p>
               <button
-                onClick={() => setIsOnboardingOpen(true)}
+                onClick={() => navigate("/dashboard")}
                 className="text-xs text-indigo-600 dark:text-indigo-400 font-semibold hover:underline cursor-pointer"
               >
                 + Create first workspace
@@ -67,7 +103,7 @@ export default function Sidebar() {
               return (
                 <div
                   key={b.id}
-                  onClick={() => selectBoard(b.id)}
+                  onClick={() => navigate(`/workspace/${b.id}`)}
                   className={`group relative flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium cursor-pointer transition-all ${
                     isActive
                       ? "bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 shadow-sm ring-1 ring-indigo-500/20"
@@ -132,7 +168,7 @@ export default function Sidebar() {
         </div>
       )}
 
-      {/* Activity Log Feed */}
+      {/* Activity Log Feed - Real API Data */}
       <div className="p-4 flex-1 overflow-y-auto">
         <div className="flex items-center gap-2 mb-3">
           <Activity className="h-4 w-4 text-emerald-500" />
@@ -141,20 +177,25 @@ export default function Sidebar() {
           </h3>
         </div>
 
-        {activeBoard?.activity_logs && activeBoard.activity_logs.length > 0 ? (
+        {loadingActivities ? (
+          <div className="text-center py-6 text-[11px] text-slate-400 italic">
+            Loading activity...
+          </div>
+        ) : activities.length > 0 ? (
           <div className="space-y-3">
-            {activeBoard.activity_logs.slice(0, 5).map((log) => (
+            {activities.slice(0, 8).map((log) => (
               <div key={log.id} className="flex gap-2 text-xs">
                 <div className="h-2 w-2 mt-1.5 rounded-full bg-indigo-500 flex-shrink-0" />
                 <div>
                   <p className="text-slate-700 dark:text-slate-300 font-medium">
-                    <span className="font-semibold">{log.user_name}</span> {log.action}
+                    <span className="font-semibold">{log.user_name}</span>{" "}
+                    {formatAction(log.action)}
                   </p>
                   {log.details && (
                     <p className="text-[10px] text-slate-400 line-clamp-1">{log.details}</p>
                   )}
                   <span className="text-[9px] text-slate-400">
-                    {new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    {timeAgo(log.created_at)}
                   </span>
                 </div>
               </div>
@@ -162,7 +203,7 @@ export default function Sidebar() {
           </div>
         ) : (
           <div className="text-center py-6 text-[11px] text-slate-400 italic">
-            No activity logged yet
+            {activeBoard ? "No activity logged yet" : "Select a workspace to view activity"}
           </div>
         )}
       </div>

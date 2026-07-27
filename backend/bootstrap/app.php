@@ -19,6 +19,9 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->validateCsrfTokens(except: [
             'api/*'
         ]);
+        $middleware->alias([
+            'auth.api' => \App\Http\Middleware\AuthApi::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         // Render 404 JSON for model not found

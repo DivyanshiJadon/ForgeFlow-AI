@@ -25,21 +25,24 @@ class HermesProvider implements AIProviderInterface
                 'messages' => $messages,
             ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
 
-           $response = Http::withOptions([
-                'verify' => false,
-                'version' => 1.1,
-                'expect' => false,
+            $response = Http::withoutVerifying()
+            ->withHeaders([
+                'Authorization' => 'Bearer ' . $apiKey,
+                'Accept' => 'application/json',
+                'Content-Type' => 'application/json',
             ])
             ->acceptJson()
             ->contentType('application/json')
             ->connectTimeout(10)
-            ->timeout((int) env('HERMES_TIMEOUT_SECONDS', 120))
+            ->timeout((int) env('HERMES_TIMEOUT_SECONDS', 60))
             ->post($apiBase . '/chat/completions', [
                 'model' => $model,
                 'messages' => $messages,
                 'temperature' => 0.7,
                 'stream' => false,
             ]);
+            Log::info('Status: ' . $response->status());
+            Log::info('Body: ' . $response->body());
 
             if ($response->successful()) {
                 $json = $response->json();

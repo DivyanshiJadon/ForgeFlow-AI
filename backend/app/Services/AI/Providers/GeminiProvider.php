@@ -2,6 +2,7 @@
 
 namespace App\Services\AI\Providers;
 
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -23,11 +24,13 @@ class GeminiProvider implements AIProviderInterface
         Log::info("Dispatching chat request to Gemini API: {$apiBase}/chat/completions [Model: {$model}]");
 
         try {
-            $response = Http::withHeaders([
+            $response = Http::withoutVerifying()
+            ->withHeaders([
                 'Authorization' => 'Bearer ' . $apiKey,
                 'Content-Type' => 'application/json',
             ])
-                ->timeout(90)
+                ->connectTimeout(10)
+                ->timeout((int) env('GEMINI_TIMEOUT_SECONDS', 30))
                 ->post($apiBase . '/chat/completions', [
                     'model' => $model,
                     'messages' => $messages,
@@ -44,6 +47,10 @@ class GeminiProvider implements AIProviderInterface
 
             return "⚠️ **Gemini API Error ({$response->status()}):** {$errorMsg}";
 
+        } catch (ConnectionException $e) {
+            Log::error('Gemini API connection timeout: ' . $e->getMessage());
+            return '⚠️ **Gemini Connection Timeout:** Could not connect to Gemini API. Check your network connection.';
+
         } catch (\Exception $e) {
             Log::error('Gemini API connection exception: ' . $e->getMessage());
 
@@ -51,3 +58,4 @@ class GeminiProvider implements AIProviderInterface
         }
     }
 }
+

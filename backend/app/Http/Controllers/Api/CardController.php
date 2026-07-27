@@ -10,6 +10,7 @@ use App\Http\Resources\Api\CardResource;
 use App\Repositories\Card\CardRepositoryInterface;
 use App\Services\Card\CardService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class CardController extends Controller
 {
@@ -24,18 +25,13 @@ class CardController extends Controller
         $this->cardService = $cardService;
     }
 
-    /**
-     * Create a new task card.
-     */
     public function store(CreateCardRequest $request): JsonResponse
     {
-        $card = $this->cardService->createCard($request->validated());
+        $user = $request->attributes->get('auth_user');
+        $card = $this->cardService->createCard($request->validated(), $user);
         return response()->json(new CardResource($card), 201);
     }
 
-    /**
-     * Get a specific task card.
-     */
     public function show(int $id): JsonResponse
     {
         $card = $this->cardRepository->findWithRelations($id);
@@ -47,9 +43,6 @@ class CardController extends Controller
         return response()->json(new CardResource($card));
     }
 
-    /**
-     * Update details on a card (assignee, priority, due date, description).
-     */
     public function update(UpdateCardRequest $request, int $id): JsonResponse
     {
         $card = $this->cardRepository->find($id);
@@ -58,14 +51,12 @@ class CardController extends Controller
             return response()->json(['message' => 'Task not found.'], 404);
         }
 
-        $updatedCard = $this->cardService->updateCard($card, $request->validated());
+        $user = $request->attributes->get('auth_user');
+        $updatedCard = $this->cardService->updateCard($card, $request->validated(), $user);
 
         return response()->json(new CardResource($updatedCard));
     }
 
-    /**
-     * Drag and drop / reorder cards positions and columns.
-     */
     public function reorder(ReorderCardRequest $request, int $id): JsonResponse
     {
         $card = $this->cardRepository->find($id);
@@ -74,21 +65,20 @@ class CardController extends Controller
             return response()->json(['message' => 'Task not found.'], 404);
         }
 
+        $user = $request->attributes->get('auth_user');
         $validated = $request->validated();
         
         $updatedCard = $this->cardService->reorderCard(
             $card,
             $validated['board_list_id'],
-            $validated['position']
+            $validated['position'],
+            $user
         );
 
         return response()->json(new CardResource($updatedCard));
     }
 
-    /**
-     * Delete a task card.
-     */
-    public function destroy(int $id): JsonResponse
+    public function destroy(Request $request, int $id): JsonResponse
     {
         $card = $this->cardRepository->find($id);
 
@@ -96,7 +86,8 @@ class CardController extends Controller
             return response()->json(['message' => 'Task not found.'], 404);
         }
 
-        $this->cardService->deleteCard($card);
+        $user = $request->attributes->get('auth_user');
+        $this->cardService->deleteCard($card, $user);
 
         return response()->json(['message' => 'Task deleted successfully.']);
     }

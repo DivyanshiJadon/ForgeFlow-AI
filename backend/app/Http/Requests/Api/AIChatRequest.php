@@ -16,6 +16,7 @@ class AIChatRequest extends FormRequest
         return [
             'message' => 'nullable|string',
             'board_id' => 'nullable|integer',
+            'session_id' => 'nullable|integer|exists:ai_chat_sessions,id',
             'messages' => 'nullable|array',
             'context' => 'nullable|array',
         ];

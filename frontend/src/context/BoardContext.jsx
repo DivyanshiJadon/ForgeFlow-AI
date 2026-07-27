@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
-import API from "../api";
+import API from "../services/api";
 
 const BoardContext = createContext();
 
@@ -10,21 +10,17 @@ export const BoardProvider = ({ children }) => {
   const [loading, setLoading] = useState(false);
   const [boardLoading, setBoardLoading] = useState(false);
 
-  // Filters & UI State
   const [searchQuery, setSearchQuery] = useState("");
   const [priorityFilter, setPriorityFilter] = useState("ALL");
   const [isDark, setIsDark] = useState(() => {
     return localStorage.getItem("theme") === "dark" || false;
   });
   const [isAISidebarOpen, setIsAISidebarOpen] = useState(false);
-  
-  // Modals
+
   const [selectedCard, setSelectedCard] = useState(null);
   const [isAddTaskModalOpen, setIsAddTaskModalOpen] = useState(false);
   const [targetListIdForNewTask, setTargetListIdForNewTask] = useState(null);
-  const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
 
-  // Notifications / Toast
   const [toast, setToast] = useState(null);
 
   const showToast = (message, type = "success") => {
@@ -32,7 +28,6 @@ export const BoardProvider = ({ children }) => {
     setTimeout(() => setToast(null), 4000);
   };
 
-  // Sync Dark mode with DOM
   useEffect(() => {
     if (isDark) {
       document.documentElement.classList.add("dark");
@@ -48,36 +43,23 @@ export const BoardProvider = ({ children }) => {
   const toggleTheme = () => setIsDark((prev) => !prev);
   const toggleAISidebar = () => setIsAISidebarOpen((prev) => !prev);
 
-  // Select board and navigate away from onboarding
   const selectBoard = (boardId) => {
     setActiveBoardId(boardId);
-    setIsOnboardingOpen(false);
   };
 
-  // Fetch all boards
   const fetchBoards = useCallback(async () => {
     setLoading(true);
     try {
       const res = await API.get("/boards");
-      const data = res.data;
-      setBoards(data);
-      
-      // Auto-select first board if none active and boards exist
-      if (data.length > 0 && !activeBoardId) {
-        setActiveBoardId(data[0].id);
-      } else if (data.length === 0) {
-        setActiveBoardId(null);
-        setActiveBoard(null);
-      }
+      setBoards(res.data);
     } catch (err) {
       console.error("Error fetching boards:", err);
       showToast("Failed to load workspaces", "error");
     } finally {
       setLoading(false);
     }
-  }, [activeBoardId]);
+  }, []);
 
-  // Fetch active board details (including lists & cards)
   const fetchActiveBoardDetails = useCallback(async (boardId) => {
     if (!boardId) return;
     setBoardLoading(true);
@@ -94,7 +76,7 @@ export const BoardProvider = ({ children }) => {
 
   useEffect(() => {
     fetchBoards();
-  }, []);
+  }, [fetchBoards]);
 
   useEffect(() => {
     if (activeBoardId) {
@@ -102,16 +84,12 @@ export const BoardProvider = ({ children }) => {
     }
   }, [activeBoardId, fetchActiveBoardDetails]);
 
-  // Create Workspace / Board
   const createBoard = async ({ name, color = "#6366f1", icon = "kanban", template = "blank" }) => {
     try {
       const res = await API.post("/boards", { name, color, icon, template });
       const newBoard = res.data;
       setBoards((prev) => [...prev, newBoard]);
-      setActiveBoardId(newBoard.id);
-      setActiveBoard(newBoard); // Update active board directly for immediate navigation!
-      setIsOnboardingOpen(false); // Close onboarding view
-      showToast(`Workspace "${newBoard.name}" created successfully!`);
+      showToast(`Workspace "${newBoard.name}" created successfully.`);
       return newBoard;
     } catch (err) {
       console.error("Error creating board:", err);
@@ -120,19 +98,13 @@ export const BoardProvider = ({ children }) => {
     }
   };
 
-  // Delete Board
   const deleteBoard = async (boardId) => {
     try {
       await API.delete(`/boards/${boardId}`);
-      const updated = boards.filter((b) => b.id !== boardId);
-      setBoards(updated);
+      setBoards((prev) => prev.filter((b) => b.id !== boardId));
       if (activeBoardId === boardId) {
-        const nextId = updated.length > 0 ? updated[0].id : null;
-        setActiveBoardId(nextId);
-        if (!nextId) {
-          setActiveBoard(null);
-          setIsOnboardingOpen(true);
-        }
+        setActiveBoardId(null);
+        setActiveBoard(null);
       }
       showToast("Workspace deleted");
     } catch (err) {
@@ -141,7 +113,6 @@ export const BoardProvider = ({ children }) => {
     }
   };
 
-  // Create List / Column
   const createList = async (name) => {
     if (!activeBoardId || !name.trim()) return;
     try {
@@ -158,7 +129,6 @@ export const BoardProvider = ({ children }) => {
     }
   };
 
-  // Update List
   const updateList = async (listId, data) => {
     try {
       await API.put(`/lists/${listId}`, data);
@@ -169,7 +139,6 @@ export const BoardProvider = ({ children }) => {
     }
   };
 
-  // Delete List
   const deleteList = async (listId) => {
     try {
       await API.delete(`/lists/${listId}`);
@@ -181,7 +150,6 @@ export const BoardProvider = ({ children }) => {
     }
   };
 
-  // Create Task / Card
   const createCard = async (cardData) => {
     try {
       const res = await API.post("/cards", cardData);
@@ -195,7 +163,6 @@ export const BoardProvider = ({ children }) => {
     }
   };
 
-  // Update Task / Card
   const updateCard = async (cardId, cardData) => {
     try {
       const res = await API.put(`/cards/${cardId}`, cardData);
@@ -212,7 +179,6 @@ export const BoardProvider = ({ children }) => {
     }
   };
 
-  // Delete Task / Card
   const deleteCard = async (cardId) => {
     try {
       await API.delete(`/cards/${cardId}`);
@@ -227,24 +193,16 @@ export const BoardProvider = ({ children }) => {
     }
   };
 
-  // Move Card between lists or within same list (reorder)
   const moveCard = async (cardId, targetListId, newPosition) => {
-    // Optimistic UI update
     setActiveBoard((prevBoard) => {
       if (!prevBoard) return prevBoard;
-      
       let movedCard = null;
       const updatedLists = prevBoard.lists.map((list) => {
         const found = list.cards?.find((c) => c.id === cardId);
         if (found) movedCard = { ...found, board_list_id: targetListId };
-        return {
-          ...list,
-          cards: list.cards?.filter((c) => c.id !== cardId) || [],
-        };
+        return { ...list, cards: list.cards?.filter((c) => c.id !== cardId) || [] };
       });
-
       if (!movedCard) return prevBoard;
-
       return {
         ...prevBoard,
         lists: updatedLists.map((list) => {
@@ -257,7 +215,6 @@ export const BoardProvider = ({ children }) => {
         }),
       };
     });
-
     try {
       await API.post(`/cards/${cardId}/reorder`, {
         board_list_id: targetListId,
@@ -269,7 +226,6 @@ export const BoardProvider = ({ children }) => {
     }
   };
 
-  // Add Comment to Card
   const addComment = async (cardId, commentData) => {
     try {
       const res = await API.post(`/cards/${cardId}/comments`, commentData);
@@ -292,44 +248,15 @@ export const BoardProvider = ({ children }) => {
   return (
     <BoardContext.Provider
       value={{
-        boards,
-        activeBoardId,
-        setActiveBoardId,
-        selectBoard,
-        activeBoard,
-        loading,
-        boardLoading,
-        searchQuery,
-        setSearchQuery,
-        priorityFilter,
-        setPriorityFilter,
-        isDark,
-        toggleTheme,
-        isAISidebarOpen,
-        setIsAISidebarOpen,
-        toggleAISidebar,
-        selectedCard,
-        setSelectedCard,
-        isAddTaskModalOpen,
-        setIsAddTaskModalOpen,
-        targetListIdForNewTask,
-        setTargetListIdForNewTask,
-        isOnboardingOpen,
-        setIsOnboardingOpen,
-        toast,
-        showToast,
-        fetchBoards,
-        fetchActiveBoardDetails,
-        createBoard,
-        deleteBoard,
-        createList,
-        updateList,
-        deleteList,
-        createCard,
-        updateCard,
-        deleteCard,
-        moveCard,
-        addComment,
+        boards, activeBoardId, setActiveBoardId, selectBoard, activeBoard,
+        loading, boardLoading, searchQuery, setSearchQuery,
+        priorityFilter, setPriorityFilter, isDark, toggleTheme,
+        isAISidebarOpen, setIsAISidebarOpen, toggleAISidebar,
+        selectedCard, setSelectedCard, isAddTaskModalOpen, setIsAddTaskModalOpen,
+        targetListIdForNewTask, setTargetListIdForNewTask,
+        toast, showToast, fetchBoards, fetchActiveBoardDetails,
+        createBoard, deleteBoard, createList, updateList, deleteList,
+        createCard, updateCard, deleteCard, moveCard, addComment,
       }}
     >
       {children}

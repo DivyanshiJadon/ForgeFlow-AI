@@ -4,26 +4,30 @@ namespace App\Services\Board;
 
 use App\Models\Board;
 use App\Models\BoardList;
-use App\Models\ActivityLog;
+use App\Models\Member;
+use App\Models\User;
 use App\Repositories\Board\BoardRepositoryInterface;
+use App\Services\Activity\ActivityService;
 
 class BoardService
 {
     protected $boardRepository;
+    protected $activityService;
 
-    public function __construct(BoardRepositoryInterface $boardRepository)
-    {
+    public function __construct(
+        BoardRepositoryInterface $boardRepository,
+        ActivityService $activityService
+    ) {
         $this->boardRepository = $boardRepository;
+        $this->activityService = $activityService;
     }
 
-    /**
-     * Create a new workspace/board and populate columns based on template selection.
-     */
-    public function createBoard(array $data): Board
+    public function createBoard(array $data, ?User $user = null): Board
     {
         $boardName = $data['name'];
 
         $board = $this->boardRepository->create([
+            'user_id' => $user?->id,
             'name' => $boardName,
             'title' => $boardName,
             'description' => $data['description'] ?? null,
@@ -62,7 +66,6 @@ class BoardService
                 break;
         }
 
-        // Create default board lists (columns)
         foreach ($columns as $index => $colName) {
             BoardList::create([
                 'board_id' => $board->id,
@@ -71,13 +74,24 @@ class BoardService
             ]);
         }
 
-        // Log the board creation activity
-        ActivityLog::create([
-            'board_id' => $board->id,
-            'user_name' => 'System',
-            'action' => 'workspace_created',
-            'details' => "Created workspace using " . ucfirst(str_replace('_', ' ', $template)) . " template with " . count($columns) . " columns.",
-        ]);
+        // Auto-add the creator as board member with Owner role
+        if ($user) {
+            $member = Member::firstOrCreate(
+                ['email' => $user->email],
+                [
+                    'name' => $user->name,
+                    'avatar_color' => '#6366f1',
+                ]
+            );
+            $board->members()->attach($member->id, ['role' => 'owner']);
+        }
+
+        $this->activityService->log(
+            $board->id,
+            'workspace_created',
+            "Created workspace using " . ucfirst(str_replace('_', ' ', $template)) . " template with " . count($columns) . " columns.",
+            $user
+        );
 
         return $board->load('lists.cards');
     }

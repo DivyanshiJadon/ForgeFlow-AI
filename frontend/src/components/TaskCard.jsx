@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   Calendar,
   MessageSquare,
@@ -6,11 +6,13 @@ import {
   AlertCircle,
   Tag as TagIcon,
   CheckSquare,
+  Trash2,
 } from "lucide-react";
 import { useBoard } from "../context/BoardContext";
 
 export default function TaskCard({ card, listId }) {
-  const { setSelectedCard } = useBoard();
+  const { setSelectedCard, deleteCard } = useBoard();
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const getPriorityStyle = (priority) => {
     switch (priority?.toUpperCase()) {
@@ -27,11 +29,35 @@ export default function TaskCard({ card, listId }) {
 
   const isOverdue = card.due_date && new Date(card.due_date) < new Date();
 
+  const handleDelete = async (e) => {
+    e.stopPropagation();
+    if (isDeleting) return;
+    if (!confirm(`Delete "${card.title}"?`)) return;
+    setIsDeleting(true);
+    try {
+      await deleteCard(card.id);
+    } catch (err) {
+      console.error("Delete failed:", err);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   return (
     <div
       onClick={() => setSelectedCard(card)}
       className="group relative bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200/80 dark:border-slate-800 shadow-sm hover:shadow-md hover:border-indigo-400/50 dark:hover:border-indigo-500/40 transition-all duration-200 cursor-pointer select-none"
     >
+      {/* Quick Delete Button - Top Right on Hover */}
+      <button
+        onClick={handleDelete}
+        disabled={isDeleting}
+        className="absolute -top-2 -right-2 z-10 p-1.5 rounded-lg bg-rose-500 text-white shadow-md opacity-0 group-hover:opacity-100 hover:bg-rose-600 transition-all duration-150 disabled:opacity-50 cursor-pointer"
+        title="Delete task"
+      >
+        <Trash2 className="h-3 w-3" />
+      </button>
+
       {/* Priority & Top Meta */}
       <div className="flex items-center justify-between mb-2">
         {card.priority && (
@@ -60,7 +86,7 @@ export default function TaskCard({ card, listId }) {
       </div>
 
       {/* Title */}
-      <h4 className="font-semibold text-sm text-slate-800 dark:text-slate-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors line-clamp-2 mb-1.5">
+      <h4 className="font-semibold text-sm text-slate-800 dark:text-slate-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors line-clamp-2 mb-1.5 pr-4">
         {card.title}
       </h4>
 

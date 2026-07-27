@@ -10,6 +10,7 @@ class Board extends Model
     use HasFactory;
 
     protected $fillable = [
+        'user_id',
         'name',
         'title',
         'description',
@@ -39,6 +40,21 @@ class Board extends Model
     public function lists()
     {
         return $this->hasMany(BoardList::class)->orderBy('position');
+    }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    /**
+     * Get the members assigned to this board.
+     */
+    public function members()
+    {
+        return $this->belongsToMany(Member::class, 'board_members', 'board_id', 'member_id')
+            ->withPivot('role')
+            ->withTimestamps();
     }
 
     /**
