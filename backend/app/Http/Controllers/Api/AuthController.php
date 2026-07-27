@@ -13,16 +13,23 @@ class AuthController extends Controller
 {
     public function register(Request $request): JsonResponse
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email',
-            'password' => 'required|string|min:6|confirmed',
-        ]);
+        $validated = $request->validate(
+            [
+                'name' => 'required|string|max:255',
+                'email' => 'required|email|unique:users,email',
+                'password' => 'required|string|min:6|confirmed',
+            ],
+            [
+                'email.unique' => 'An account with this email already exists. Please sign in.',
+                'password.confirmed' => 'Passwords do not match.',
+                'password.min' => 'Password must be at least 6 characters.',
+            ]
+        );
 
         $user = User::create([
             'name' => $validated['name'],
             'email' => $validated['email'],
-            'password' => Hash::make($validated['password']),
+            'password' => $validated['password'],
             'api_token' => Str::random(64),
         ]);
 
@@ -38,10 +45,17 @@ class AuthController extends Controller
 
     public function login(Request $request): JsonResponse
     {
-        $validated = $request->validate([
-            'email' => 'required|email',
-            'password' => 'required|string',
-        ]);
+        $validated = $request->validate(
+            [
+                'email' => 'required|email',
+                'password' => 'required|string',
+            ],
+            [
+                'email.required' => 'Email is required.',
+                'email.email' => 'Please enter a valid email address.',
+                'password.required' => 'Password is required.',
+            ]
+        );
 
         $user = User::where('email', $validated['email'])->first();
 

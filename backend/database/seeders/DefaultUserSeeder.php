@@ -5,7 +5,6 @@ namespace Database\Seeders;
 use App\Models\User;
 use App\Models\Board;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 
 class DefaultUserSeeder extends Seeder
@@ -16,7 +15,7 @@ class DefaultUserSeeder extends Seeder
             ['email' => 'admin@forgeflow.dev'],
             [
                 'name' => 'Admin',
-                'password' => Hash::make('password123'),
+                'password' => 'password123',
                 'api_token' => Str::random(64),
             ]
         );

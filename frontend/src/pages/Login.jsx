@@ -42,10 +42,14 @@ export default function LoginPage() {
       }
       navigate("/dashboard");
     } catch (err) {
-      const msg =
-        err.response?.data?.message ||
-        err.response?.data?.errors?.email?.[0] ||
-        "Authentication failed. Please try again.";
+      const data = err.response?.data;
+      let msg = "Authentication failed. Please try again.";
+      if (data?.message) {
+        msg = data.message;
+      } else if (data?.errors) {
+        const first = Object.values(data.errors)[0];
+        if (Array.isArray(first) && first.length > 0) msg = first[0];
+      }
       setError(msg);
     } finally {
       setLoading(false);
