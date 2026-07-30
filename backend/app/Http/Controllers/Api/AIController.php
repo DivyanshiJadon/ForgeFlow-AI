@@ -67,6 +67,13 @@ class AIController extends Controller
             // If no valid session, create one automatically
             if (!$session && !empty($validated['message'])) {
                 $boardId = $validated['board_id'] ?? null;
+                // Fall back to user's most recently used board if no board_id given
+                if (!$boardId && $user) {
+                    $lastBoard = \App\Models\Board::where('user_id', $user->id)
+                        ->orderBy('updated_at', 'desc')
+                        ->first();
+                    $boardId = $lastBoard?->id;
+                }
                 $session = ChatSession::create([
                     'board_id' => $boardId,
                     'user_id' => $user?->id,
@@ -89,6 +96,10 @@ class AIController extends Controller
                     'role' => 'assistant',
                     'content' => $reply,
                 ]);
+                // Update title if still default after first user message
+                if (!empty($validated['message']) && $session->title === 'New Chat') {
+                    $session->update(['title' => $this->generateTitle($validated['message'])]);
+                }
                 $session->touch();
             }
 

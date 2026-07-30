@@ -24,6 +24,9 @@ class ChatController extends Controller
         }
 
         $sessions = ChatSession::where('board_id', $boardId)
+            ->orWhere(function ($q) use ($user) {
+                $q->whereNull('board_id')->where('user_id', $user->id);
+            })
             ->with('messages')
             ->orderBy('updated_at', 'desc')
             ->get();
@@ -49,6 +52,41 @@ class ChatController extends Controller
 
         $session = ChatSession::create([
             'board_id' => $boardId,
+            'user_id' => $user->id,
+            'title' => $validated['title'] ?? 'New Chat',
+        ]);
+
+        return response()->json($session, 201);
+    }
+
+    /**
+     * List all of the user's chat sessions (global, no board filter).
+     */
+    public function indexGlobalSessions(Request $request): JsonResponse
+    {
+        $user = $request->attributes->get('auth_user');
+
+        $sessions = ChatSession::where('user_id', $user->id)
+            ->with('messages')
+            ->orderBy('updated_at', 'desc')
+            ->get();
+
+        return response()->json($sessions);
+    }
+
+    /**
+     * Create a new chat session without a board (global).
+     */
+    public function storeGlobalSession(Request $request): JsonResponse
+    {
+        $user = $request->attributes->get('auth_user');
+
+        $validated = $request->validate([
+            'title' => 'nullable|string|max:255',
+        ]);
+
+        $session = ChatSession::create([
+            'board_id' => null,
             'user_id' => $user->id,
             'title' => $validated['title'] ?? 'New Chat',
         ]);

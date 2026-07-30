@@ -49,6 +49,11 @@ Route::middleware('auth.api')->group(function () {
     // AI Chat Sessions (per workspace)
     Route::get('boards/{boardId}/chat-sessions', [ChatController::class, 'indexSessions']);
     Route::post('boards/{boardId}/chat-sessions', [ChatController::class, 'storeSession']);
+
+    // AI Chat Sessions (global — no board required)
+    Route::get('chat-sessions', [ChatController::class, 'indexGlobalSessions']);
+    Route::post('chat-sessions', [ChatController::class, 'storeGlobalSession']);
+
     Route::get('chat-sessions/{sessionId}', [ChatController::class, 'showSession']);
     Route::put('chat-sessions/{sessionId}', [ChatController::class, 'updateSession']);
     Route::delete('chat-sessions/{sessionId}', [ChatController::class, 'destroySession']);

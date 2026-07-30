@@ -5,7 +5,7 @@ const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [token, setToken] = useState(() => localStorage.getItem("forge_token"));
+  const [token, setToken] = useState(() => sessionStorage.getItem("forge_token"));
   const [loading, setLoading] = useState(true);
 
   const fetchUser = useCallback(async () => {
@@ -31,7 +31,7 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password) => {
     const res = await API.post("/auth/login", { email, password });
     const { user: userData, token: newToken } = res.data;
-    localStorage.setItem("forge_token", newToken);
+    sessionStorage.setItem("forge_token", newToken);
     API.defaults.headers.common["Authorization"] = `Bearer ${newToken}`;
     setToken(newToken);
     setUser(userData);
@@ -46,7 +46,7 @@ export const AuthProvider = ({ children }) => {
       password_confirmation,
     });
     const { user: userData, token: newToken } = res.data;
-    localStorage.setItem("forge_token", newToken);
+    sessionStorage.setItem("forge_token", newToken);
     API.defaults.headers.common["Authorization"] = `Bearer ${newToken}`;
     setToken(newToken);
     setUser(userData);
@@ -62,7 +62,7 @@ export const AuthProvider = ({ children }) => {
     } catch {
       // ignore logout errors
     }
-    localStorage.removeItem("forge_token");
+    sessionStorage.removeItem("forge_token");
     delete API.defaults.headers.common["Authorization"];
     setToken(null);
     setUser(null);

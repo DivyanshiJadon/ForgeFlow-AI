@@ -61,13 +61,17 @@ export default function AISidePanel() {
   }, []);
 
   useEffect(() => {
-    if (!isAISidebarOpen || !activeBoardId) return;
+    if (!isAISidebarOpen) return;
     loadMostRecentSession();
   }, [isAISidebarOpen, activeBoardId]);
 
+  const sessionsEndpoint = () => activeBoardId
+    ? `/boards/${activeBoardId}/chat-sessions`
+    : '/chat-sessions';
+
   const loadMostRecentSession = async () => {
     try {
-      const res = await API.get(`/boards/${activeBoardId}/chat-sessions`);
+      const res = await API.get(sessionsEndpoint());
       const sessions = res.data;
       if (sessions.length > 0) {
         const mostRecent = sessions[0];
@@ -89,9 +93,8 @@ export default function AISidePanel() {
   };
 
   const startNewSession = async () => {
-    if (!activeBoardId) return;
     try {
-      const res = await API.post(`/boards/${activeBoardId}/chat-sessions`, {
+      const res = await API.post(sessionsEndpoint(), {
         title: "New Chat",
       });
       setActiveSessionId(res.data.id);

@@ -39,11 +39,14 @@ export default function ChatHistorySidebar({
   const [editTitle, setEditTitle] = useState("");
   const [deletingId, setDeletingId] = useState(null);
 
+  const sessionsEndpoint = () => boardId
+    ? `/boards/${boardId}/chat-sessions`
+    : '/chat-sessions';
+
   const fetchSessions = async () => {
-    if (!boardId) return;
     setLoading(true);
     try {
-      const res = await API.get(`/boards/${boardId}/chat-sessions`);
+      const res = await API.get(sessionsEndpoint());
       setSessions(res.data);
     } catch {
       setSessions([]);
@@ -54,7 +57,7 @@ export default function ChatHistorySidebar({
 
   // Refresh when panel opens, board changes, or parent bumps refreshKey
   useEffect(() => {
-    if (!isOpen || !boardId) return;
+    if (!isOpen) return;
     fetchSessions();
   }, [isOpen, boardId, refreshKey]);
 
@@ -67,7 +70,7 @@ export default function ChatHistorySidebar({
 
   const handleNewSession = async () => {
     try {
-      const res = await API.post(`/boards/${boardId}/chat-sessions`, {
+      const res = await API.post(sessionsEndpoint(), {
         title: "New Chat",
       });
       setSessions((prev) => [res.data, ...prev]);

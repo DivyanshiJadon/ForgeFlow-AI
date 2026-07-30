@@ -11,7 +11,7 @@ const API = axios.create({
   timeout: 60000,
 });
 
-const savedToken = localStorage.getItem("forge_token");
+const savedToken = sessionStorage.getItem("forge_token");
 if (savedToken) {
   API.defaults.headers.common["Authorization"] = `Bearer ${savedToken}`;
 }
@@ -20,7 +20,7 @@ API.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem("forge_token");
+      sessionStorage.removeItem("forge_token");
       delete API.defaults.headers.common["Authorization"];
       if (window.location.pathname !== "/login") {
         window.location.href = "/login";
