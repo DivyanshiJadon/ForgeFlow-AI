@@ -373,7 +373,7 @@ function generateGeneralResponse(board, userMessage) {
   const lists = getLists(board);
   const totalTasks = allCards.length;
 
-  let response = `## 🤖 SprintForge Copilot\n\n`;
+  let response = `## 🤖 ForgeFlow AI Copilot\n\n`;
 
   response += `Thank you for your question about "${userMessage.substring(0, 100)}".\n\n`;
 

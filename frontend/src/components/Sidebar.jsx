@@ -45,10 +45,15 @@ export default function Sidebar() {
     activeBoard,
     deleteBoard,
     toggleAISidebar,
+    addMember,
+    fetchActiveBoardDetails,
   } = useBoard();
   const navigate = useNavigate();
   const [activities, setActivities] = React.useState([]);
   const [loadingActivities, setLoadingActivities] = React.useState(false);
+  const [isAddingMember, setIsAddingMember] = React.useState(false);
+  const [newMemberName, setNewMemberName] = React.useState("");
+  const [newMemberEmail, setNewMemberEmail] = React.useState("");
 
   React.useEffect(() => {
     if (!activeBoardId) {
@@ -163,6 +168,71 @@ export default function Sidebar() {
                   ? activeBoard.lists.reduce((acc, l) => acc + (l.cards ? l.cards.length : 0), 0)
                   : 0}
               </span>
+            </div>
+          </div>
+
+          {/* Members */}
+          <div className="mt-3">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">
+                Members ({activeBoard.members ? activeBoard.members.length : 0})
+              </span>
+              <button
+                onClick={() => setIsAddingMember(!isAddingMember)}
+                className="text-[10px] text-indigo-600 dark:text-indigo-400 font-semibold hover:underline cursor-pointer"
+              >
+                {isAddingMember ? "Cancel" : "+ Add"}
+              </button>
+            </div>
+            {isAddingMember && (
+              <form
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  if (!newMemberName.trim() || !newMemberEmail.trim()) return;
+                  await addMember(activeBoardId, {
+                    name: newMemberName.trim(),
+                    email: newMemberEmail.trim(),
+                  });
+                  setNewMemberName("");
+                  setNewMemberEmail("");
+                  setIsAddingMember(false);
+                }}
+                className="space-y-1.5 mb-2"
+              >
+                <input
+                  type="text"
+                  placeholder="Name"
+                  value={newMemberName}
+                  onChange={(e) => setNewMemberName(e.target.value)}
+                  className="w-full bg-slate-50 dark:bg-slate-800 text-[11px] px-2 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-800 dark:text-slate-200"
+                />
+                <input
+                  type="email"
+                  placeholder="Email"
+                  value={newMemberEmail}
+                  onChange={(e) => setNewMemberEmail(e.target.value)}
+                  className="w-full bg-slate-50 dark:bg-slate-800 text-[11px] px-2 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-800 dark:text-slate-200"
+                />
+                <button
+                  type="submit"
+                  disabled={!newMemberName.trim() || !newMemberEmail.trim()}
+                  className="w-full px-2 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-bold rounded-lg disabled:opacity-50"
+                >
+                  Add Member
+                </button>
+              </form>
+            )}
+            <div className="flex flex-wrap gap-1">
+              {activeBoard.members?.map((m) => (
+                <div
+                  key={m.id}
+                  className="h-6 w-6 rounded-full flex items-center justify-center text-[9px] font-bold text-white"
+                  style={{ backgroundColor: m.avatar_color || "#6366f1" }}
+                  title={m.name}
+                >
+                  {m.name.charAt(0).toUpperCase()}
+                </div>
+              ))}
             </div>
           </div>
         </div>

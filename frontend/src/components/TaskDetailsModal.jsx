@@ -21,6 +21,7 @@ export default function TaskDetailsModal() {
     deleteCard,
     addComment,
     activeBoard,
+    allTags,
   } = useBoard();
 
   if (!selectedCard) return null;
@@ -36,6 +37,9 @@ export default function TaskDetailsModal() {
   const [commentText, setCommentText] = useState("");
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [selectedTagIds, setSelectedTagIds] = useState(
+    () => (selectedCard.tags || []).map((t) => t.id)
+  );
 
   useEffect(() => {
     setTitle(selectedCard.title || "");
@@ -43,6 +47,7 @@ export default function TaskDetailsModal() {
     setPriority(selectedCard.priority || "MEDIUM");
     setDueDate(selectedCard.due_date ? selectedCard.due_date.substring(0, 10) : "");
     setMemberId(selectedCard.member_id || "");
+    setSelectedTagIds((selectedCard.tags || []).map((t) => t.id));
   }, [selectedCard]);
 
   const handleSaveCard = async () => {
@@ -78,6 +83,14 @@ export default function TaskDetailsModal() {
     } finally {
       setIsSubmittingComment(false);
     }
+  };
+
+  const handleToggleTag = async (tagId) => {
+    const next = selectedTagIds.includes(tagId)
+      ? selectedTagIds.filter((id) => id !== tagId)
+      : [...selectedTagIds, tagId];
+    setSelectedTagIds(next);
+    await updateCard(selectedCard.id, { tags: next });
   };
 
   return (
@@ -186,6 +199,42 @@ export default function TaskDetailsModal() {
               className="w-full bg-slate-50 dark:bg-slate-950 text-xs text-slate-800 dark:text-slate-200 p-3 rounded-xl border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-y"
             />
           </div>
+
+          {/* Tags */}
+          {allTags.length > 0 && (
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <TagIcon className="h-4 w-4 text-indigo-500" />
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                  Tags
+                </label>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {allTags.map((tag) => {
+                  const isSelected = selectedTagIds.includes(tag.id);
+                  return (
+                    <button
+                      key={tag.id}
+                      type="button"
+                      onClick={() => handleToggleTag(tag.id)}
+                      className={`text-[11px] font-semibold px-3 py-1 rounded-lg border transition-all ${
+                        isSelected
+                          ? "text-white shadow-sm"
+                          : "text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-slate-400"
+                      }`}
+                      style={
+                        isSelected
+                          ? { backgroundColor: tag.color, borderColor: tag.color }
+                          : {}
+                      }
+                    >
+                      {tag.name}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Comments Feed */}
           <div>

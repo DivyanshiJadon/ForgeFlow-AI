@@ -9,6 +9,7 @@ export default function AddTaskModal() {
     targetListIdForNewTask,
     activeBoard,
     createCard,
+    allTags,
   } = useBoard();
 
   if (!isAddTaskModalOpen || !activeBoard) return null;
@@ -21,6 +22,7 @@ export default function AddTaskModal() {
   const [priority, setPriority] = useState("MEDIUM");
   const [dueDate, setDueDate] = useState("");
   const [memberId, setMemberId] = useState("");
+  const [selectedTagIds, setSelectedTagIds] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e) => {
@@ -36,9 +38,11 @@ export default function AddTaskModal() {
         priority,
         due_date: dueDate || null,
         member_id: memberId ? Number(memberId) : null,
+        tags: selectedTagIds,
       });
       setTitle("");
       setDescription("");
+      setSelectedTagIds([]);
       setIsAddTaskModalOpen(false);
     } catch (err) {
       console.error("Task creation failed:", err);
@@ -163,6 +167,45 @@ export default function AddTaskModal() {
               </select>
             </div>
           </div>
+
+          {/* Tags */}
+          {allTags.length > 0 && (
+            <div>
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1.5">
+                Tags
+              </label>
+              <div className="flex flex-wrap gap-1.5">
+                {allTags.map((tag) => {
+                  const isSelected = selectedTagIds.includes(tag.id);
+                  return (
+                    <button
+                      key={tag.id}
+                      type="button"
+                      onClick={() =>
+                        setSelectedTagIds((prev) =>
+                          isSelected
+                            ? prev.filter((id) => id !== tag.id)
+                            : [...prev, tag.id]
+                        )
+                      }
+                      className={`text-[10px] font-semibold px-2.5 py-1 rounded-lg border transition-all ${
+                        isSelected
+                          ? "text-white shadow-sm"
+                          : "text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-slate-400"
+                      }`}
+                      style={
+                        isSelected
+                          ? { backgroundColor: tag.color, borderColor: tag.color }
+                          : {}
+                      }
+                    >
+                      {tag.name}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           <div className="pt-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-end gap-2">
             <button

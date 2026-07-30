@@ -22,6 +22,7 @@ export const BoardProvider = ({ children }) => {
   const [targetListIdForNewTask, setTargetListIdForNewTask] = useState(null);
 
   const [toast, setToast] = useState(null);
+  const [allTags, setAllTags] = useState([]);
 
   const showToast = (message, type = "success") => {
     setToast({ message, type });
@@ -60,6 +61,28 @@ export const BoardProvider = ({ children }) => {
     }
   }, []);
 
+  const fetchTags = useCallback(async () => {
+    try {
+      const res = await API.get("/tags");
+      setAllTags(res.data);
+    } catch (err) {
+      console.error("Error fetching tags:", err);
+    }
+  }, []);
+
+  const addMember = async (boardId, { name, email }) => {
+    try {
+      const res = await API.post(`/boards/${boardId}/members`, { name, email });
+      fetchActiveBoardDetails(boardId);
+      showToast(`Member "${name}" added`);
+      return res.data;
+    } catch (err) {
+      console.error("Error adding member:", err);
+      showToast("Failed to add member", "error");
+      throw err;
+    }
+  };
+
   const fetchActiveBoardDetails = useCallback(async (boardId) => {
     if (!boardId) return;
     setBoardLoading(true);
@@ -76,7 +99,8 @@ export const BoardProvider = ({ children }) => {
 
   useEffect(() => {
     fetchBoards();
-  }, [fetchBoards]);
+    fetchTags();
+  }, [fetchBoards, fetchTags]);
 
   useEffect(() => {
     if (activeBoardId) {
@@ -254,9 +278,10 @@ export const BoardProvider = ({ children }) => {
         isAISidebarOpen, setIsAISidebarOpen, toggleAISidebar,
         selectedCard, setSelectedCard, isAddTaskModalOpen, setIsAddTaskModalOpen,
         targetListIdForNewTask, setTargetListIdForNewTask,
-        toast, showToast, fetchBoards, fetchActiveBoardDetails,
+        toast, showToast, fetchBoards, fetchActiveBoardDetails, fetchTags,
         createBoard, deleteBoard, createList, updateList, deleteList,
         createCard, updateCard, deleteCard, moveCard, addComment,
+        allTags, addMember,
       }}
     >
       {children}

@@ -8,6 +8,9 @@ use App\Http\Controllers\Api\CardController;
 use App\Http\Controllers\Api\CommentController;
 use App\Http\Controllers\Api\AIController;
 use App\Http\Controllers\Api\ChatController;
+use App\Http\Controllers\Api\SlackController;
+use App\Http\Controllers\Api\TagController;
+use App\Http\Controllers\Api\MemberController;
 
 // Public auth routes
 Route::post('auth/register', [AuthController::class, 'register']);
@@ -53,4 +56,17 @@ Route::middleware('auth.api')->group(function () {
     // Chat Messages
     Route::get('chat-sessions/{sessionId}/messages', [ChatController::class, 'indexMessages']);
     Route::post('chat-sessions/{sessionId}/messages', [ChatController::class, 'storeMessage']);
+
+    // Slack Integration
+    Route::post('test-slack', [SlackController::class, 'testSlack']);
+
+    // Tags
+    Route::get('tags', [TagController::class, 'index']);
+    Route::post('tags', [TagController::class, 'store']);
+    Route::delete('tags/{id}', [TagController::class, 'destroy']);
+
+    // Board Members
+    Route::get('boards/{boardId}/members', [MemberController::class, 'index']);
+    Route::post('boards/{boardId}/members', [MemberController::class, 'store']);
+    Route::delete('boards/{boardId}/members/{memberId}', [MemberController::class, 'destroy']);
 });

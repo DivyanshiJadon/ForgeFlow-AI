@@ -2,7 +2,7 @@
 
 ## 1. System Overview
 
-**ForgeFlow AI** (SprintForge) is built around a two-agent human-in-the-loop paradigm:
+**ForgeFlow AI** is built around a two-agent human-in-the-loop paradigm:
 - **Orchestrator (The Brain)**: Powered by **Hermes Agent**. Responsible for high-level goal decomposition, persistent cross-session memory, cron updates, and skill execution.
 - **Coder / Hands (The Execution Agent)**: Powered by **OpenClaw**. Executes code changes, database migrations, scaffold builds, and reports task progress back to chat.
 

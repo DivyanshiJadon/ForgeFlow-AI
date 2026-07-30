@@ -97,7 +97,7 @@ export default function Dashboard() {
               No workspaces yet
             </h3>
             <p className="text-sm text-slate-500 mb-6">
-              Create your first workspace to get started with SprintForge AI.
+              Create your first workspace to get started with ForgeFlow AI.
             </p>
             <button
               onClick={() => setShowCreateModal(true)}

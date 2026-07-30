@@ -247,7 +247,7 @@ export default function AISidePanel() {
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="font-bold text-sm text-slate-900 dark:text-white">
-                  SprintForge Copilot
+                  ForgeFlow AI Copilot
                 </h3>
                 <span className="px-1.5 py-0.5 text-[9px] font-mono font-semibold rounded bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300">
                   {providerLabel}
@@ -310,7 +310,7 @@ export default function AISidePanel() {
                 <Bot className="h-6 w-6" />
               </div>
               <h4 className="font-bold text-sm text-slate-800 dark:text-slate-100 mb-1">
-                SprintForge Copilot
+                ForgeFlow AI Copilot
               </h4>
               <p className="text-[11px] text-slate-500 dark:text-slate-400 mb-4 leading-relaxed max-w-xs">
                 Ask Copilot to plan sprints, break down features, or audit workloads.

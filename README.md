@@ -1,4 +1,4 @@
-# ForgeFlow AI (SprintForge) — AI-Powered Kanban SaaS
+# ForgeFlow AI  — AI-Powered Kanban SaaS
 
 > **Forge 2 Qualifier Project**  
 > An AI-powered project & sprint management tool built with Laravel, React, and local Hermes/OpenClaw LLM integration.

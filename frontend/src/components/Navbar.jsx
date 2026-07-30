@@ -58,7 +58,7 @@ export default function Navbar() {
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="font-bold text-lg tracking-tight text-slate-900 dark:text-white">ForgeFlow AI</h1>
-                <span className="px-2 py-0.5 text-[10px] font-semibold tracking-wider uppercase rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-950/80 dark:text-indigo-300">SprintForge</span>
+                <span className="px-2 py-0.5 text-[10px] font-semibold tracking-wider uppercase rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-950/80 dark:text-indigo-300">AI</span>
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400 hidden sm:block">AI-Powered Project & Sprint Management</p>
             </div>

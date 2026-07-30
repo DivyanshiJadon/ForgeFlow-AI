@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Plus, MoreHorizontal, Trash2, Edit2, Check, X } from "lucide-react";
+import { Droppable } from "@hello-pangea/dnd";
 import TaskCard from "./TaskCard";
 import { useBoard } from "../context/BoardContext";
 
@@ -128,15 +129,26 @@ export default function Column({ list }) {
       </div>
 
       {/* Cards Scrollable Area */}
-      <div className="p-3 flex-1 overflow-y-auto space-y-3 min-h-[120px]">
-        {list.cards && list.cards.length > 0 ? (
-          list.cards.map((card) => <TaskCard key={card.id} card={card} listId={list.id} />)
-        ) : (
-          <div className="h-24 flex items-center justify-center border border-dashed border-slate-300 dark:border-slate-800 rounded-xl text-[11px] text-slate-400">
-            No cards in this list
+      <Droppable droppableId={String(list.id)}>
+        {(provided) => (
+          <div
+            ref={provided.innerRef}
+            {...provided.droppableProps}
+            className="p-3 flex-1 overflow-y-auto space-y-3 min-h-[120px]"
+          >
+            {list.cards && list.cards.length > 0 ? (
+              list.cards.map((card, index) => (
+                <TaskCard key={card.id} card={card} listId={list.id} index={index} />
+              ))
+            ) : (
+              <div className="h-24 flex items-center justify-center border border-dashed border-slate-300 dark:border-slate-800 rounded-xl text-[11px] text-slate-400">
+                No cards in this list
+              </div>
+            )}
+            {provided.placeholder}
           </div>
         )}
-      </div>
+      </Droppable>
 
       {/* Column Footer: Add Card */}
       <div className="p-3 border-t border-slate-200/60 dark:border-slate-800/60">

@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Plus, Check, X, Filter, FolderKanban, Sparkles } from "lucide-react";
+import { DragDropContext, Droppable } from "@hello-pangea/dnd";
 import Column from "../components/Column";
 import { useBoard } from "../context/BoardContext";
 
@@ -11,6 +12,7 @@ export default function Board() {
     priorityFilter,
     boardLoading,
     setIsAISidebarOpen,
+    moveCard,
   } = useBoard();
 
   const [isAddingColumn, setIsAddingColumn] = useState(false);
@@ -36,6 +38,21 @@ export default function Board() {
     await createList(newColumnName.trim());
     setNewColumnName("");
     setIsAddingColumn(false);
+  };
+
+  const handleDragEnd = (result) => {
+    const { destination, source, draggableId } = result;
+    if (!destination) return;
+    if (
+      destination.droppableId === source.droppableId &&
+      destination.index === source.index
+    )
+      return;
+
+    const cardId = Number(draggableId);
+    const targetListId = Number(destination.droppableId);
+    const newPosition = destination.index + 1;
+    moveCard(cardId, targetListId, newPosition);
   };
 
   // Filter columns and cards based on search and priority
@@ -104,54 +121,56 @@ export default function Board() {
       </div>
 
       {/* Main Board Columns Area */}
-      <div className="flex-1 overflow-x-auto p-6 flex items-start gap-4">
-        {processedLists.map((list) => (
-          <Column key={list.id} list={list} />
-        ))}
+      <DragDropContext onDragEnd={handleDragEnd}>
+        <div className="flex-1 overflow-x-auto p-6 flex items-start gap-4">
+          {processedLists.map((list) => (
+            <Column key={list.id} list={list} />
+          ))}
 
-        {/* Add Column Button / Form */}
-        <div className="w-80 flex-shrink-0">
-          {isAddingColumn ? (
-            <form
-              onSubmit={handleAddColumn}
-              className="p-3 bg-white dark:bg-slate-900 rounded-2xl border border-indigo-500 shadow-md space-y-3"
-            >
-              <input
-                type="text"
-                placeholder="Column name (e.g. Code Review)..."
-                value={newColumnName}
-                onChange={(e) => setNewColumnName(e.target.value)}
-                autoFocus
-                className="w-full bg-slate-50 dark:bg-slate-800 text-xs font-semibold p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 focus:outline-none"
-              />
-              <div className="flex items-center justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsAddingColumn(false)}
-                  className="px-3 py-1.5 text-xs text-slate-500 hover:text-slate-700"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={!newColumnName.trim()}
-                  className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs disabled:opacity-50"
-                >
-                  Add Column
-                </button>
-              </div>
-            </form>
-          ) : (
-            <button
-              onClick={() => setIsAddingColumn(true)}
-              className="w-full h-12 flex items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-slate-300 dark:border-slate-800 text-xs font-bold text-slate-500 dark:text-slate-400 hover:border-indigo-500 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all"
-            >
-              <Plus className="h-4 w-4" />
-              <span>Add Column</span>
-            </button>
-          )}
+          {/* Add Column Button / Form */}
+          <div className="w-80 flex-shrink-0">
+            {isAddingColumn ? (
+              <form
+                onSubmit={handleAddColumn}
+                className="p-3 bg-white dark:bg-slate-900 rounded-2xl border border-indigo-500 shadow-md space-y-3"
+              >
+                <input
+                  type="text"
+                  placeholder="Column name (e.g. Code Review)..."
+                  value={newColumnName}
+                  onChange={(e) => setNewColumnName(e.target.value)}
+                  autoFocus
+                  className="w-full bg-slate-50 dark:bg-slate-800 text-xs font-semibold p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 focus:outline-none"
+                />
+                <div className="flex items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsAddingColumn(false)}
+                    className="px-3 py-1.5 text-xs text-slate-500 hover:text-slate-700"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={!newColumnName.trim()}
+                    className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs disabled:opacity-50"
+                  >
+                    Add Column
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <button
+                onClick={() => setIsAddingColumn(true)}
+                className="w-full h-12 flex items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-slate-300 dark:border-slate-800 text-xs font-bold text-slate-500 dark:text-slate-400 hover:border-indigo-500 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all"
+              >
+                <Plus className="h-4 w-4" />
+                <span>Add Column</span>
+              </button>
+            )}
+          </div>
         </div>
-      </div>
+      </DragDropContext>
     </div>
   );
 }

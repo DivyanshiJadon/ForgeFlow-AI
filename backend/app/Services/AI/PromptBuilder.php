@@ -42,7 +42,7 @@ class PromptBuilder
             }
         }
 
-        return "You are ForgeFlow AI, the premium AI Project & Sprint Management assistant running inside the SprintForge board workspace.
+        return "You are ForgeFlow AI, the premium AI Project & Sprint Management assistant running inside the ForgeFlow AI board workspace.
 
 You help developers, managers, and designers build project plans, prioritize backlogs, write agile user stories, break down feature requirements into sub-tasks, and audit workflows.
 
